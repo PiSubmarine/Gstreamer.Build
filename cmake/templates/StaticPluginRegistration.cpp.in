@@ -1,0 +1,36 @@
+#include "PiSubmarine/Gstreamer/Build/StaticPluginRegistration.h"
+
+#include <mutex>
+
+#include <gst/gst.h>
+#include <spdlog/spdlog.h>
+
+#if @PISUBMARINE_GSTREAMER_GENERATED_HAS_STATIC_PLUGINS@
+extern "C"
+{
+@PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_DECLARES@
+}
+#endif
+
+namespace PiSubmarine::Gstreamer::Build
+{
+    namespace
+    {
+        std::once_flag StaticPluginRegistrationFlag;
+    }
+
+    void RegisterStaticPlugins(const std::shared_ptr<spdlog::logger>& logger)
+    {
+        std::call_once(StaticPluginRegistrationFlag, [&logger]
+        {
+#if @PISUBMARINE_GSTREAMER_GENERATED_HAS_STATIC_PLUGINS@
+            SPDLOG_LOGGER_INFO(
+                logger,
+                "Registering static GStreamer plugins: @PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_LIST@");
+@PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_REGISTRATIONS@
+#else
+            SPDLOG_LOGGER_INFO(logger, "Using dynamic GStreamer plugin discovery");
+#endif
+        });
+    }
+}
