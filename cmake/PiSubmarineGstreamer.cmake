@@ -411,7 +411,6 @@ function(PiSubmarineGstreamerFinalizeCompositionRoot target)
 
     set(_plugin_declares "")
     set(_plugin_registrations "")
-    set(_plugin_checks "")
     set(_plugin_list_text "<none>")
     if(_plugins)
         list(JOIN _plugins ", " _plugin_list_text)
@@ -421,7 +420,6 @@ function(PiSubmarineGstreamerFinalizeCompositionRoot target)
         foreach(_plugin IN LISTS _plugins)
             string(APPEND _plugin_declares "GST_PLUGIN_STATIC_DECLARE(${_plugin});\n")
             string(APPEND _plugin_registrations "            GST_PLUGIN_STATIC_REGISTER(${_plugin});\n")
-            string(APPEND _plugin_checks "        if (plugin == \"${_plugin}\")\n        {\n            return true;\n        }\n")
         endforeach()
     endif()
 
@@ -436,7 +434,6 @@ function(PiSubmarineGstreamerFinalizeCompositionRoot target)
     endif()
     set(PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_DECLARES "${_plugin_declares}")
     set(PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_REGISTRATIONS "${_plugin_registrations}")
-    set(PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_CHECKS "${_plugin_checks}")
     set(PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_LIST "${_plugin_list_text}")
 
     configure_file(
