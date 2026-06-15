@@ -1,7 +1,7 @@
 include_guard(GLOBAL)
 
 set(PISUBMARINE_GSTREAMER_BUILD_TEMPLATE
-        "${CMAKE_CURRENT_LIST_DIR}/templates/StaticPluginRegistration.cpp.in")
+        "${CMAKE_CURRENT_LIST_DIR}/templates/GstreamerBuildPlugins.cpp.in")
 
 function(_pisubmarine_gstreamer_initialize_state)
     if(DEFINED PISUBMARINE_GSTREAMER_STATE_INITIALIZED)
@@ -297,6 +297,44 @@ function(_pisubmarine_gstreamer_link_windows_support_libraries target)
             dxgi)
 endfunction()
 
+function(_pisubmarine_gstreamer_link_plugin_extra_dependencies target)
+    foreach(_plugin IN LISTS ARGN)
+        if(_plugin STREQUAL "app")
+            if(PkgConfig_FOUND)
+                pkg_check_modules(PISUBMARINE_GSTREAMER_APP QUIET IMPORTED_TARGET gstreamer-app-1.0)
+            endif()
+
+            if(TARGET PkgConfig::PISUBMARINE_GSTREAMER_APP)
+                target_link_libraries("${target}" PRIVATE PkgConfig::PISUBMARINE_GSTREAMER_APP)
+            else()
+                find_library(PISUBMARINE_GSTREAMER_APP_LIBRARY
+                        NAMES gstapp-1.0
+                        PATHS
+                            "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/debug/lib"
+                            "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib"
+                        NO_DEFAULT_PATH)
+                if(NOT PISUBMARINE_GSTREAMER_APP_LIBRARY)
+                    message(FATAL_ERROR
+                            "Failed to locate required GStreamer helper library 'gstreamer-app-1.0' "
+                            "for plugin 'app'.")
+                endif()
+
+                target_link_libraries("${target}" PRIVATE "${PISUBMARINE_GSTREAMER_APP_LIBRARY}")
+            endif()
+        endif()
+
+        if(_plugin STREQUAL "qt6d3d11")
+            find_package(Qt6 CONFIG REQUIRED COMPONENTS Core Gui Network Qml Quick)
+            target_link_libraries("${target}" PRIVATE
+                    Qt6::Core
+                    Qt6::Gui
+                    Qt6::Network
+                    Qt6::Qml
+                    Qt6::Quick)
+        endif()
+    endforeach()
+endfunction()
+
 function(PiSubmarineGstreamerAddPlugin target plugin_name)
     if(NOT TARGET "${target}")
         message(FATAL_ERROR "PiSubmarineGstreamerAddPlugin: '${target}' is not a valid target")
@@ -369,8 +407,11 @@ function(PiSubmarineGstreamerFinalizeCompositionRoot target)
         _pisubmarine_gstreamer_link_windows_support_libraries("${target}")
     endif()
 
+    _pisubmarine_gstreamer_link_plugin_extra_dependencies("${target}" ${_plugins})
+
     set(_plugin_declares "")
     set(_plugin_registrations "")
+    set(_plugin_checks "")
     set(_plugin_list_text "<none>")
     if(_plugins)
         list(JOIN _plugins ", " _plugin_list_text)
@@ -380,6 +421,7 @@ function(PiSubmarineGstreamerFinalizeCompositionRoot target)
         foreach(_plugin IN LISTS _plugins)
             string(APPEND _plugin_declares "GST_PLUGIN_STATIC_DECLARE(${_plugin});\n")
             string(APPEND _plugin_registrations "            GST_PLUGIN_STATIC_REGISTER(${_plugin});\n")
+            string(APPEND _plugin_checks "        if (plugin == \"${_plugin}\")\n        {\n            return true;\n        }\n")
         endforeach()
     endif()
 
@@ -394,6 +436,7 @@ function(PiSubmarineGstreamerFinalizeCompositionRoot target)
     endif()
     set(PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_DECLARES "${_plugin_declares}")
     set(PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_REGISTRATIONS "${_plugin_registrations}")
+    set(PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_CHECKS "${_plugin_checks}")
     set(PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_LIST "${_plugin_list_text}")
 
     configure_file(

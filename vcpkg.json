@@ -10,6 +10,13 @@
         "openh264"
       ]
     },
+    {
+      "name": "qtbase",
+      "default-features": false,
+      "features": [
+        "gui"
+      ]
+    },
     "spdlog",
     "gtest"
   ]
