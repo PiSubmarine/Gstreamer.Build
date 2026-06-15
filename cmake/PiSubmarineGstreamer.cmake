@@ -1,8 +1,5 @@
 include_guard(GLOBAL)
 
-set(PISUBMARINE_GSTREAMER_BUILD_TEMPLATE
-        "${CMAKE_CURRENT_LIST_DIR}/templates/GstreamerBuildPlugins.cpp.in")
-
 function(_pisubmarine_gstreamer_initialize_state)
     if(DEFINED PISUBMARINE_GSTREAMER_STATE_INITIALIZED)
         return()
@@ -427,6 +424,7 @@ function(PiSubmarineGstreamerFinalizeCompositionRoot target)
     set(_generated_directory "${CMAKE_CURRENT_BINARY_DIR}/generated/gstreamer/${_target_identifier}")
     file(MAKE_DIRECTORY "${_generated_directory}")
     set(_generated_source "${_generated_directory}/StaticPluginRegistration.cpp")
+    set(_generated_template "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/templates/GstreamerBuildPlugins.cpp.in")
 
     set(PISUBMARINE_GSTREAMER_GENERATED_HAS_STATIC_PLUGINS 0)
     if(_has_static_plugins)
@@ -437,7 +435,7 @@ function(PiSubmarineGstreamerFinalizeCompositionRoot target)
     set(PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_LIST "${_plugin_list_text}")
 
     configure_file(
-            "${PISUBMARINE_GSTREAMER_BUILD_TEMPLATE}"
+            "${_generated_template}"
             "${_generated_source}"
             @ONLY)
 
