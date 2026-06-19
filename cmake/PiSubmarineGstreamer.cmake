@@ -99,36 +99,25 @@ function(PiSubmarineGstreamerInitializeBaseTarget target)
     endif()
 endfunction()
 
-function(_pisubmarine_gstreamer_get_plugin_package plugin_name out_package)
-    if(plugin_name STREQUAL "app")
-        set(_package "gstapp")
-    elseif(plugin_name STREQUAL "autodetect")
-        set(_package "gstautodetect")
-    elseif(plugin_name STREQUAL "coreelements")
-        set(_package "gstcoreelements")
-    elseif(plugin_name STREQUAL "mediafoundation")
-        set(_package "gstmediafoundation")
-    elseif(plugin_name STREQUAL "openh264")
-        set(_package "gstopenh264")
-    elseif(plugin_name STREQUAL "qt6d3d11")
-        set(_package "gstqt6d3d11")
-    elseif(plugin_name STREQUAL "rtp")
-        set(_package "gstrtp")
-    elseif(plugin_name STREQUAL "udp")
-        set(_package "gstudp")
-    elseif(plugin_name STREQUAL "video4linux2")
-        set(_package "gstvideo4linux2")
-    elseif(plugin_name STREQUAL "videoconvertscale")
-        set(_package "gstvideoconvertscale")
-    elseif(plugin_name STREQUAL "videoparsersbad")
-        set(_package "gstvideoparsersbad")
-    elseif(plugin_name STREQUAL "videotestsrc")
-        set(_package "gstvideotestsrc")
-    else()
-        message(FATAL_ERROR "Unknown GStreamer plugin '${plugin_name}'")
+function(_pisubmarine_gstreamer_normalize_plugin_name plugin_name out_plugin_name)
+    if(NOT plugin_name)
+        message(FATAL_ERROR "GStreamer plugin name must not be empty")
     endif()
 
-    set(${out_package} "${_package}" PARENT_SCOPE)
+    set(_normalized "${plugin_name}")
+    string(REGEX REPLACE "^libgst" "" _normalized "${_normalized}")
+    string(REGEX REPLACE "^gst" "" _normalized "${_normalized}")
+
+    if(NOT _normalized)
+        message(FATAL_ERROR "Failed to normalize GStreamer plugin name '${plugin_name}'")
+    endif()
+
+    set(${out_plugin_name} "${_normalized}" PARENT_SCOPE)
+endfunction()
+
+function(_pisubmarine_gstreamer_get_plugin_package plugin_name out_package)
+    _pisubmarine_gstreamer_normalize_plugin_name("${plugin_name}" _normalized_plugin_name)
+    set(${out_package} "gst${_normalized_plugin_name}" PARENT_SCOPE)
 endfunction()
 
 function(_pisubmarine_gstreamer_normalize_link_item item out_target)
@@ -193,6 +182,7 @@ function(_pisubmarine_gstreamer_collect_static_plugin_library plugin_name out_li
         return()
     endif()
 
+    _pisubmarine_gstreamer_normalize_plugin_name("${plugin_name}" _normalized_plugin_name)
     set(_plugin_variable_name "PISUBMARINE_GSTREAMER_PLUGIN_${plugin_name}")
     unset(${_plugin_variable_name} CACHE)
     unset(${_plugin_variable_name})
@@ -202,7 +192,7 @@ function(_pisubmarine_gstreamer_collect_static_plugin_library plugin_name out_li
         set(CMAKE_FIND_LIBRARY_SUFFIXES "${CMAKE_STATIC_LIBRARY_SUFFIX}")
     endif()
     find_library(${_plugin_variable_name}
-            NAMES "gst${plugin_name}" "libgst${plugin_name}"
+            NAMES "gst${_normalized_plugin_name}" "libgst${_normalized_plugin_name}"
             PATHS "${PISUBMARINE_GSTREAMER_STATIC_PLUGIN_DIR}"
             NO_DEFAULT_PATH)
     set(CMAKE_FIND_LIBRARY_SUFFIXES "${_find_library_suffixes}")
@@ -337,9 +327,10 @@ function(PiSubmarineGstreamerAddPlugin target plugin_name)
         message(FATAL_ERROR "PiSubmarineGstreamerAddPlugin: '${target}' is not a valid target")
     endif()
 
-    _pisubmarine_gstreamer_get_plugin_package("${plugin_name}" _unused_package)
+    _pisubmarine_gstreamer_normalize_plugin_name("${plugin_name}" _normalized_plugin_name)
+    _pisubmarine_gstreamer_get_plugin_package("${_normalized_plugin_name}" _unused_package)
     set_property(TARGET "${target}" APPEND PROPERTY
-            PISUBMARINE_GSTREAMER_REQUESTED_PLUGINS "${plugin_name}")
+            PISUBMARINE_GSTREAMER_REQUESTED_PLUGINS "${_normalized_plugin_name}")
 endfunction()
 
 function(PiSubmarineGstreamerFinalizeCompositionRoot target)
@@ -421,10 +412,12 @@ function(PiSubmarineGstreamerFinalizeCompositionRoot target)
     endif()
 
     string(MAKE_C_IDENTIFIER "${target}" _target_identifier)
-    set(_generated_directory "${CMAKE_CURRENT_BINARY_DIR}/generated/gstreamer/${_target_identifier}")
+    set(_generated_directory
+            "${CMAKE_CURRENT_BINARY_DIR}/generated/gstreamer/${_target_identifier}/PiSubmarine/Gstreamer/Build")
     file(MAKE_DIRECTORY "${_generated_directory}")
-    set(_generated_source "${_generated_directory}/StaticPluginRegistration.cpp")
-    set(_generated_template "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/templates/GstreamerBuildPlugins.cpp.in")
+    set(_generated_template
+            "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/templates/PiSubmarine/Gstreamer/Build/Plugins.cpp.in")
+    set(_generated_source "${_generated_directory}/Plugins.cpp")
 
     set(PISUBMARINE_GSTREAMER_GENERATED_HAS_STATIC_PLUGINS 0)
     if(_has_static_plugins)

@@ -1,0 +1,61 @@
+#include "PiSubmarine/Gstreamer/Build/Plugins.h"
+
+#include <mutex>
+#include <string>
+
+#include <gst/gst.h>
+#include <spdlog/spdlog.h>
+
+#if @PISUBMARINE_GSTREAMER_GENERATED_HAS_STATIC_PLUGINS@
+extern "C"
+{
+@PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_DECLARES@
+}
+#endif
+
+namespace PiSubmarine::Gstreamer::Build::Plugins
+{
+    namespace
+    {
+        std::once_flag StaticPluginRegistrationFlag;
+    }
+
+    void RegisterStatic(const std::shared_ptr<spdlog::logger>& logger)
+    {
+        std::call_once(StaticPluginRegistrationFlag, [&logger]
+        {
+#if @PISUBMARINE_GSTREAMER_GENERATED_HAS_STATIC_PLUGINS@
+            SPDLOG_LOGGER_INFO(
+                logger,
+                "Registering static GStreamer plugins: @PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_LIST@");
+@PISUBMARINE_GSTREAMER_GENERATED_PLUGIN_REGISTRATIONS@
+#else
+            SPDLOG_LOGGER_INFO(logger, "Using dynamic GStreamer plugin discovery");
+#endif
+        });
+    }
+
+    bool IsRegistered(const std::string_view plugin) noexcept
+    {
+        if (!gst_is_initialized())
+        {
+            return false;
+        }
+
+        GstRegistry* registry = gst_registry_get();
+        if (registry == nullptr)
+        {
+            return false;
+        }
+
+        const auto pluginName = std::string(plugin);
+        GstPlugin* gstPlugin = gst_registry_find_plugin(registry, pluginName.c_str());
+        if (gstPlugin == nullptr)
+        {
+            return false;
+        }
+
+        gst_object_unref(GST_OBJECT(gstPlugin));
+        return true;
+    }
+}
