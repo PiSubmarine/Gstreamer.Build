@@ -230,6 +230,7 @@ function(_pisubmarine_gstreamer_link_windows_support_libraries target)
             "gstbase-1.0:gstbase-1.0"
             "gstvideo-1.0:gstvideo-1.0"
             "gstcodecparsers-1.0:gstcodecparsers-1.0"
+            "gstcodecs-1.0:gstcodecs-1.0"
             "gstrtp-1.0:gstrtp-1.0"
             "gstaudio-1.0:gstaudio-1.0"
             "gsttag-1.0:gsttag-1.0"
@@ -237,6 +238,7 @@ function(_pisubmarine_gstreamer_link_windows_support_libraries target)
             "gstnet-1.0:gstnet-1.0"
             "gstd3d11-1.0:gstd3d11-1.0"
             "gstd3dshader-1.0:gstd3dshader-1.0"
+            "gstdxva-1.0:gstdxva-1.0"
             "gstwinrt-1.0:gstwinrt-1.0"
             "gio-2.0:gio-2.0"
             "openh264:openh264")
