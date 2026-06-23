@@ -1,5 +1,32 @@
 include_guard(GLOBAL)
 
+function(_pisubmarine_gstreamer_get_vcpkg_search_roots out_roots)
+    set(_roots "")
+
+    if(DEFINED VCPKG_INSTALLED_DIR AND VCPKG_INSTALLED_DIR)
+        list(APPEND _roots "${VCPKG_INSTALLED_DIR}")
+    endif()
+
+    list(APPEND _roots "${CMAKE_BINARY_DIR}/vcpkg_installed")
+    list(REMOVE_DUPLICATES _roots)
+
+    set(${out_roots} "${_roots}" PARENT_SCOPE)
+endfunction()
+
+function(_pisubmarine_gstreamer_append_vcpkg_library_search_paths out_paths)
+    _pisubmarine_gstreamer_get_vcpkg_search_roots(_vcpkg_roots)
+
+    set(_paths "")
+    foreach(_vcpkg_root IN LISTS _vcpkg_roots)
+        list(APPEND _paths
+                "${_vcpkg_root}/${VCPKG_TARGET_TRIPLET}/debug/lib"
+                "${_vcpkg_root}/${VCPKG_TARGET_TRIPLET}/lib")
+    endforeach()
+    list(REMOVE_DUPLICATES _paths)
+
+    set(${out_paths} "${_paths}" PARENT_SCOPE)
+endfunction()
+
 function(_pisubmarine_gstreamer_initialize_state)
     if(DEFINED PISUBMARINE_GSTREAMER_STATE_INITIALIZED)
         return()
@@ -63,8 +90,12 @@ function(_pisubmarine_gstreamer_initialize_state)
                 "${PISUBMARINE_GSTREAMER_LIBRARY_DIR}/gstreamer-1.0")
     endif()
     if(NOT PISUBMARINE_GSTREAMER_STATIC_PLUGIN_DIR)
-        set(_candidate_plugin_dirs
-                "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib/gstreamer-1.0")
+        _pisubmarine_gstreamer_get_vcpkg_search_roots(_vcpkg_roots)
+        set(_candidate_plugin_dirs "")
+        foreach(_vcpkg_root IN LISTS _vcpkg_roots)
+            list(APPEND _candidate_plugin_dirs
+                    "${_vcpkg_root}/${VCPKG_TARGET_TRIPLET}/lib/gstreamer-1.0")
+        endforeach()
         foreach(_candidate_plugin_dir IN LISTS _candidate_plugin_dirs)
             if(EXISTS "${_candidate_plugin_dir}")
                 set(PISUBMARINE_GSTREAMER_STATIC_PLUGIN_DIR "${_candidate_plugin_dir}")
@@ -206,12 +237,12 @@ function(_pisubmarine_gstreamer_append_windows_library result_variable library_l
         message(FATAL_ERROR "No library names were provided for '${library_label}'")
     endif()
 
+    _pisubmarine_gstreamer_append_vcpkg_library_search_paths(_vcpkg_library_search_paths)
+
     unset(PISUBMARINE_GSTREAMER_WINDOWS_SUPPORT_LIBRARY CACHE)
     find_library(PISUBMARINE_GSTREAMER_WINDOWS_SUPPORT_LIBRARY
             NAMES ${_windows_library_names}
-            PATHS
-                "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/debug/lib"
-                "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib"
+            PATHS ${_vcpkg_library_search_paths}
             NO_DEFAULT_PATH)
     if(NOT PISUBMARINE_GSTREAMER_WINDOWS_SUPPORT_LIBRARY)
         message(FATAL_ERROR
@@ -296,11 +327,10 @@ function(_pisubmarine_gstreamer_link_plugin_extra_dependencies target)
             if(TARGET PkgConfig::PISUBMARINE_GSTREAMER_APP)
                 target_link_libraries("${target}" PRIVATE PkgConfig::PISUBMARINE_GSTREAMER_APP)
             else()
+                _pisubmarine_gstreamer_append_vcpkg_library_search_paths(_vcpkg_library_search_paths)
                 find_library(PISUBMARINE_GSTREAMER_APP_LIBRARY
                         NAMES gstapp-1.0
-                        PATHS
-                            "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/debug/lib"
-                            "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib"
+                        PATHS ${_vcpkg_library_search_paths}
                         NO_DEFAULT_PATH)
                 if(NOT PISUBMARINE_GSTREAMER_APP_LIBRARY)
                     message(FATAL_ERROR
