@@ -1,5 +1,15 @@
 include_guard(GLOBAL)
 
+macro(_pisubmarine_gstreamer_prepare_pkg_config)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        if((NOT DEFINED PKG_CONFIG_VERSION OR PKG_CONFIG_VERSION STREQUAL "") AND
+                DEFINED PkgConfig_VERSION AND NOT PkgConfig_VERSION STREQUAL "")
+            set(PKG_CONFIG_VERSION "${PkgConfig_VERSION}")
+        endif()
+    endif()
+endmacro()
+
 function(_pisubmarine_gstreamer_get_vcpkg_search_roots out_roots)
     set(_roots "")
 
@@ -32,7 +42,7 @@ function(_pisubmarine_gstreamer_initialize_state)
         return()
     endif()
 
-    find_package(PkgConfig QUIET)
+    _pisubmarine_gstreamer_prepare_pkg_config()
     if(PkgConfig_FOUND)
         pkg_check_modules(PISUBMARINE_GSTREAMER_CORE QUIET IMPORTED_TARGET
                 gstreamer-1.0
@@ -320,6 +330,7 @@ endfunction()
 function(_pisubmarine_gstreamer_link_plugin_extra_dependencies target)
     foreach(_plugin IN LISTS ARGN)
         if(_plugin STREQUAL "app")
+            _pisubmarine_gstreamer_prepare_pkg_config()
             if(PkgConfig_FOUND)
                 pkg_check_modules(PISUBMARINE_GSTREAMER_APP QUIET IMPORTED_TARGET gstreamer-app-1.0)
             endif()
@@ -397,6 +408,7 @@ function(PiSubmarineGstreamerFinalizeCompositionRoot target)
 
             string(MAKE_C_IDENTIFIER "${target}" _target_identifier)
             set(_pkg_prefix "PISUBMARINE_GSTREAMER_STATIC_${_target_identifier}")
+            _pisubmarine_gstreamer_prepare_pkg_config()
             pkg_check_modules(${_pkg_prefix} QUIET IMPORTED_TARGET ${_plugin_packages})
             if(TARGET "PkgConfig::${_pkg_prefix}")
                 set(_has_static_plugins TRUE)
